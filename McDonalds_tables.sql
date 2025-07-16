@@ -142,3 +142,112 @@ CREATE TABLE business.feedback (
     FOREIGN KEY (product_id) REFERENCES business.products(product_id)
 );
 
+
+
+-- Insert data into all the tables
+
+
+
+-- Analytical Query
+
+SELECT distinct st.store_id,
+    st.store_name,
+    st.city AS store_city,
+    st.state AS store_state,
+    st.region,
+    st.is_franchise,
+
+    -- Product Info
+    p.is_vegetarian,
+    p.product_id,
+    p.item_name,
+    p.category,
+    p.price,
+    p.cost,
+    p.calories,
+
+    -- Sales Info
+    sa.sale_id,
+    sa.sale_date,
+    sa.sale_time,
+    sa.quantity,
+    sa.payment_method,
+    sa.discount,
+    sa.total_amount,
+
+    -- Customer Info
+    cu.customer_id,
+    cu.first_name || ' ' || cu.last_name AS customer_name,
+    cu.gender,
+    cu.age,
+    cu.city AS customer_city,
+    cu.state AS customer_state,
+    cu.loyalty_status,
+    cu.join_date AS customer_join_date,
+
+    -- Employee Info (aggregated per store)
+    em.employee_id,
+    em.first_name || ' ' || em.last_name AS employee_name,
+    em.position,
+    em.status AS employee_status,
+    em.performance_rating,
+
+    -- Inventory Info
+    inv.stock_level,
+    inv.reorder_level,
+    inv.last_restocked,
+
+    -- Feedback Info
+    fb.feedback_id,
+    fb.rating AS feedback_rating,
+    fb.sentiment_score,
+
+    -- Digital Engagement Info
+    de.engagement_id,
+    de.platform,
+    de.campaign_name,
+    de.activity_type,
+    de.converted,
+
+    -- Supplier & Delivery Info
+    d.delivery_id,
+    d.delivery_status,
+    d.delivery_date,
+    d.total_items,
+    d.total_cost,
+    sup.supplier_id,
+    sup.supplier_name,
+    sup.rating AS supplier_rating
+
+FROM business.sales sa
+JOIN business.products p ON sa.product_id = p.product_id
+JOIN business.stores st ON sa.store_id = st.store_id
+JOIN business.customers cu ON sa.customer_id = cu.customer_id
+
+-- Join EMPLOYEE by store (1:N relationship)
+LEFT JOIN business.employees em ON em.store_id = st.store_id
+
+-- Join INVENTORY
+LEFT JOIN business.inventory inv ON inv.product_id = p.product_id AND inv.store_id = st.store_id
+
+-- Join FEEDBACK
+LEFT JOIN business.feedback fb ON fb.product_id = p.product_id 
+                               AND fb.customer_id = cu.customer_id 
+                               AND fb.store_id = st.store_id
+
+-- Join DIGITAL ENGAGEMENT
+LEFT JOIN business.digital_engagement de ON de.customer_id = cu.customer_id
+AND de.campaign_name = 'Lunch Deal'
+-- Join DELIVERIES
+LEFT JOIN business.deliveries d ON d.store_id = st.store_id
+
+-- Join SUPPLIERS
+LEFT JOIN business.suppliers sup ON sup.supplier_id = d.supplier_id;
+
+
+SELECT 
+  st.store_id, 
+  SUM(sa.total_amount) / COUNT(DISTINCT sa.customer_id) AS avg_sale_per_customer
+FROM business.sales sa
+JOIN business.stores st ON sa.store_id = st.store_id
+GROUP BY st.store_id order by avg_sale_per_customer desc;
